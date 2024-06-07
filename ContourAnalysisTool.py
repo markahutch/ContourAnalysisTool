@@ -3101,10 +3101,12 @@ class InteractivePlot:
 #-------------------
 class UserInterface:
     """
-    The UserInterface class provides users with a set of tools to analyse/process 2D images
+    The ContourAnalysisTool provides users with a set of tools to analyse/process 2D images
     to interactively and programatically identify regions of interest (e.g. high density
-    regions or background signals). The user-supplied image can be analysed in its raw form
-    or first be processed by smoothing or background removal techniques.
+    regions or background signals). The UserInterface class is a user-friendly interface
+    that helps users analyse their image with minimal coding, either in its raw form or 
+    after applying smoothing or background-removal techniques. These choices are referenced
+    using the following keywords:
 
         raw:
             Applies thresholding directly to the original image without any preprocessing.
@@ -3119,6 +3121,7 @@ class UserInterface:
     
     Techniques for determining regions of interest include searching for the last closed 
     contour, linear and logarithmic Otsu thresholding, and mean gradient thresholding.
+    Keywords used for each of these techniques are as follows:
 
         LCC (Last Closed Contour):
             Identifies the last closed contour in the image (note: highly sensitive to 
@@ -3136,12 +3139,14 @@ class UserInterface:
             Averages gradient magnitudes within a specified threshold to obtain a single 
             effective boundary level for an image, useful in identifying regions of interest.
 
-    The tool is designed as a simplified user interface to the preceeding class functions,
-    although these classes/functions/variables can still be directly manipulated/utilised by
-    the user if desired. The tool can be operated either interactively or programatically.
-    The interactive feature is particularly useful for quickly visualising changes to method
-    parameters and/or comparing different contour calculation methods and image processing
-    techniques. The simplest way to access the interactive tool is by running:
+    While the UserInterface is designed to be the main access point to the code, the
+    underlying classes/functions/variables can still be directly manipulated/utilised by
+    the user if desired. 
+
+    The tool can be operated either interactively or programatically. The interactive feature 
+    is particularly useful for quickly visualising changes to method parameters and/or 
+    comparing different contour calculation methods and image processing techniques. The 
+    simplest way to access the interactive tool is by running:
 
         ContourAnalysisTool.UserInterface(image, extent, interactive=True)
 
@@ -3151,7 +3156,8 @@ class UserInterface:
     to reproduce those values and contours programatically.
 
     Alternatively, one can bypass the interactive feature and directly obtain the contour,
-    the processed image data, and the figure by calling. Here are some examples:
+    the processed image data, and the figure. Here are some examples demonstrating how this
+    can be done:
 
         CAT = ContourAnalysisTool.UserInterface(image, extent, mask=custom_mask, Nlevels=100, 
                                 xy_units='pc', cbar_units='Jy', clabel='$\mathcal{F}$')
