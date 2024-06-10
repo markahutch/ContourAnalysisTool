@@ -274,9 +274,9 @@ class ImageData:
         self.ymin   = self.extent[2]
         self.ymax   = self.extent[3]
 
-        # Create x and y axes
-        self.x = np.linspace(self.xmin, self.xmax, self.image_raw.shape[0])
-        self.y = np.linspace(self.ymin, self.ymax, self.image_raw.shape[1])
+        # Create x and y axes (row major order)
+        self.x = np.linspace(self.xmin, self.xmax, self.image_raw.shape[1])
+        self.y = np.linspace(self.ymin, self.ymax, self.image_raw.shape[0])
 
         # 2D meshgrid of x and y
         self.X, self.Y = np.meshgrid(self.x, self.y)
@@ -977,7 +977,7 @@ class NoBackground:
         # Normalise image to [0, 1]
         image_normalized = (image - self.ID.image_min) / (self.ID.image_max - self.ID.image_min)
     
-        # Convert potential to grayscale image
+        # Convert to grayscale image
         grayscale_image = np.abs(image_normalized)
     
         # Ensure the image is in the range [-1, 1]
@@ -1101,7 +1101,7 @@ class Mask:
         ix_center = np.abs(self.ID.x - mask_xpos).argmin()
         iy_center = np.abs(self.ID.y - mask_ypos).argmin()
     
-        # Create meshgrid of indices
+        # Create meshgrid of indices (row major order)
         ix, iy = np.meshgrid(np.arange(image_shape[1]), np.arange(image_shape[0]))
     
         # Calculate distances from center
