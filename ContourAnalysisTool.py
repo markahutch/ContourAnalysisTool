@@ -129,7 +129,7 @@ class Utilities:
             text.value = text.max
 
     @staticmethod
-    def create_float_text(description, value, min_value, max_value, step, width='200px'):
+    def create_float_text(description, value, min_value, max_value, step, width='200px', **kwargs):
         """
         Creates a text input widget for float values with observe functionality.
         
@@ -292,6 +292,12 @@ class ImageData:
         self.image_max_smoothed       = None
         self.image_min_nobackground   = None
         self.image_max_nobackground   = None
+
+        # Arbitrary upper or lower limits for various parameters
+        self.small_val = 1e-300
+        self.large_val = 1e300
+        self.large_int = 1000000
+        self.rounded_min, self.rounded_min_magnitude = Utilities.round_to_significant(self.image_min, 1)
 
         # Set the min and max of the colorbar
         self.cbar_min, _ = Utilities.round_to_significant(self.image_min, 3)
@@ -571,12 +577,6 @@ class Smoothing:
         self.i_non_local_means_h            = 1
         #---------------------------------------
 
-        # Arbitrary upper or lower limits for various parameters
-        self.small_val = 1e-300
-        self.large_val = 1e300
-        self.large_int = 1000000
-        self.rounded_min, self.rounded_min_magnitude = Utilities.round_to_significant(self.ID.image_min, 1)
-
         # Dictionary for the smoothing parameters, their initial/current values, and
         # various other information needed for the interactive smoothing widgets
         self.smoothing_parameters = {
@@ -585,8 +585,8 @@ class Smoothing:
                     'label':     'Sigma',
                     'var_name':  'sigma',
                     'value':     2.0,
-                    'min_value': self.small_val,
-                    'max_value': self.large_val,
+                    'min_value': self.ID.small_val,
+                    'max_value': self.ID.large_val,
                     'step':      1
                 }
             },
@@ -594,10 +594,10 @@ class Smoothing:
                 self.i_spline_smoothing_param: {
                     'label':     's',
                     'var_name':  's',
-                    'value':     self.rounded_min,
-                    'min_value': self.small_val,
-                    'max_value': self.large_val,
-                    'step':      self.rounded_min_magnitude
+                    'value':     self.ID.rounded_min,
+                    'min_value': self.ID.small_val,
+                    'max_value': self.ID.large_val,
+                    'step':      self.ID.rounded_min_magnitude
                 }
             },
             self.smoothing_methods[self.i_loess]: {
@@ -606,13 +606,13 @@ class Smoothing:
                     'var_name':  'poly_order',
                     'value':     2,
                     'min_value': 0,
-                    'max_value': self.large_int
+                    'max_value': self.ID.large_int
                 },
                 self.i_loess_locality_frac: {
                     'label':     'Locality Frac',
                     'var_name':  'locality_frac',
                     'value':     0.01,
-                    'min_value': self.small_val,
+                    'min_value': self.ID.small_val,
                     'max_value': 1,
                     'step':      0.01
                 }
@@ -623,14 +623,14 @@ class Smoothing:
                     'var_name':  'window_length',
                     'value':     10,
                     'min_value': 3, # Needs to be 1 larger than i_savgol_poly_order
-                    'max_value': self.large_int
+                    'max_value': self.ID.large_int
                 },
                 self.i_savgol_poly_order: {
                     'label':     'Order',
                     'var_name':  'poly_order',
                     'value':     2,
                     'min_value': 0,
-                    'max_value': self.large_int
+                    'max_value': self.ID.large_int
                 },
                 self.i_savgol_boundary_mode: {
                     'label':    'Boundary',
@@ -645,7 +645,7 @@ class Smoothing:
                     'var_name':  'kernel_radius',
                     'value':     3.0,
                     'min_value': 1,
-                    'max_value': self.large_int
+                    'max_value': self.ID.large_int
                 }
             },
             self.smoothing_methods[self.i_wiener]: {
@@ -654,14 +654,14 @@ class Smoothing:
                     'var_name':  'mysize',
                     'value':     5,
                     'min_value': 1,
-                    'max_value': self.large_int
+                    'max_value': self.ID.large_int
                 },
                 self.i_wiener_noise: {
                     'label':     'Noise',
                     'var_name':  'noise',
                     'value':     0.05,
-                    'min_value': self.small_val,
-                    'max_value': self.large_val,
+                    'min_value': self.ID.small_val,
+                    'max_value': self.ID.large_val,
                     'step':      0.1
                 }
             },
@@ -670,16 +670,16 @@ class Smoothing:
                     'label':     'Sigma_x',
                     'var_name':  'sigma_spatial',
                     'value':     1.0,
-                    'min_value': self.small_val,
-                    'max_value': self.large_val,
+                    'min_value': self.ID.small_val,
+                    'max_value': self.ID.large_val,
                     'step':      0.1
                 },
                 self.i_bilateral_sigma_range: {
                     'label':     'Sigma_I',
                     'var_name':  'sigma_range',
                     'value':     1.0,
-                    'min_value': self.small_val,
-                    'max_value': self.large_val,
+                    'min_value': self.ID.small_val,
+                    'max_value': self.ID.large_val,
                     'step':      0.1
                 }
             },
@@ -697,7 +697,7 @@ class Smoothing:
                     'var_name':  'n_iter',
                     'value':     100,
                     'min_value': 1,
-                    'max_value': self.large_int
+                    'max_value': self.ID.large_int
                 }
             },
             self.smoothing_methods[self.i_anisodiff]: {
@@ -706,22 +706,22 @@ class Smoothing:
                     'var_name':  'n_iter',
                     'value':     10,
                     'min_value': 1,
-                    'max_value': self.large_int
+                    'max_value': self.ID.large_int
                 },
                 self.i_anisotropic_diffusion_kappa: {
                     'label':     'Kappa',
                     'var_name':  'kappa',
                     'value':     50.0,
-                    'min_value': self.small_val,
-                    'max_value': self.large_val,
+                    'min_value': self.ID.small_val,
+                    'max_value': self.ID.large_val,
                     'step':      0.1
                 },
                 self.i_anisotropic_diffusion_gamma: {
                     'label':     'Gamma',
                     'var_name':  'gamma',
                     'value':     0.1,
-                    'min_value': self.small_val,
-                    'max_value': self.large_val,
+                    'min_value': self.ID.small_val,
+                    'max_value': self.ID.large_val,
                     'step':      0.01
                 }
             },
@@ -731,15 +731,15 @@ class Smoothing:
                     'var_name':  'patch_size',
                     'value':     10,
                     'min_value': 1,
-                    'max_value': self.large_int
+                    'max_value': self.ID.large_int
                 },
                 self.i_non_local_means_h: {
                     'label':     'h',
                     'var_name':  'h',
-                    'value':     self.rounded_min,
-                    'min_value': self.small_val,
-                    'max_value': self.large_val,
-                    'step':      self.rounded_min_magnitude
+                    'value':     self.ID.rounded_min,
+                    'min_value': self.ID.small_val,
+                    'max_value': self.ID.large_val,
+                    'step':      self.ID.rounded_min_magnitude
                 }
             }
         }
@@ -905,7 +905,7 @@ class NoBackground:
         self.initial_filter_size_step = int(self.initial_filter_size_max/100)
         self.initial_filter_shape     = self.filter_shape_options[0]
         self.initial_pad_mode         = self.padding_options[0]
-        self.initial_pad_value        = 0
+        self.initial_pad_value        = self.ID.image_min
   
         # Dictionary for the nobackground parameters and relevant information for the widgets
         self.i_filter_shape = 0
@@ -939,8 +939,8 @@ class NoBackground:
                 'description': 'Pad Value',
                 'var_name':    'pad_value',
                 'value':       self.initial_pad_value,
-                'min_value':   0,
-                'max_value':   100,
+                'min_value':   self.ID.small_val,
+                'max_value':   self.ID.large_val,
                 'step':        1
             }
         }
@@ -954,7 +954,7 @@ class NoBackground:
             filter_size (int, optional): The size of the filter used for background estimation. Defaults to self.initial_filter_size.
             filter_shape (str, optional): The shape of the filter used for background estimation. Defaults to self.initial_filter_shape.
             pad_mode (str, optional): The padding mode used at the image boundaries. Defaults to self.initial_pad_mode.
-            pad_value (int, optional): The value used for constant padding. Defaults to self.initial_pad_value.
+            pad_value (float, optional): The value used for constant padding. Defaults to self.initial_pad_value.
 
         Returns:
             tuple: A tuple containing:
@@ -2286,10 +2286,21 @@ class RemoveBackgroundControls:
         self.filter_shape_dropdown = widgets.Dropdown(**self.NB.nobackground_parameters[self.NB.i_filter_shape])
         self.filter_size_text      = Utilities.create_int_text(**self.NB.nobackground_parameters[self.NB.i_filter_size])
         self.pad_mode_dropdown     = widgets.Dropdown(**self.NB.nobackground_parameters[self.NB.i_pad_mode])
-        self.pad_value             = Utilities.create_int_text(**self.NB.nobackground_parameters[self.NB.i_pad_value])
+        self.pad_value             = Utilities.create_float_text(**self.NB.nobackground_parameters[self.NB.i_pad_value])
 
-        # Store widgets together in a horizontal box
-        self.remove_background_controls = widgets.HBox([self.remove_background_label, self.filter_shape_dropdown, self.filter_size_text, self.pad_mode_dropdown])
+        # Create a dictionary to store the widgets
+        self.nobackground_widgets = {
+            self.NB.i_filter_shape: self.filter_shape_dropdown,
+            self.NB.i_filter_size:  self.filter_size_text,
+            self.NB.i_pad_mode:     self.pad_mode_dropdown,
+            self.NB.i_pad_value:    self.pad_value
+        }
+
+        # Store widgets together in a horizontal box (only include pad_value widget if pad_mode == 'constant')
+        if self.NB.initial_pad_mode == self.NB.padding_options[self.NB.i_constant]:
+            self.remove_background_controls = widgets.HBox([self.remove_background_label, self.filter_shape_dropdown, self.filter_size_text, self.pad_mode_dropdown, self.pad_value])
+        else:
+            self.remove_background_controls = widgets.HBox([self.remove_background_label, self.filter_shape_dropdown, self.filter_size_text, self.pad_mode_dropdown])
 #-------------------End RemoveBackgroundControls
 
 
@@ -2762,8 +2773,8 @@ class InteractivePlot:
         #-------------------
         # Smoothing Observers
         #-------------------
-        # Attach the update_layout function to the dropdown's value change
-        self.SC.smoothing_dropdown.observe(self.update_layout,    names='value')
+        # Attach the update_smoothing_layout function to the dropdown's value change
+        self.SC.smoothing_dropdown.observe(self.update_smoothing_layout,    names='value')
         self.SC.smoothing_dropdown.observe(self.update_smoothing, names='value')
         
         for method_name, widget_list in self.SC.smoothing_widgets.items():
@@ -2783,7 +2794,9 @@ class InteractivePlot:
         #-------------------
         # Remove Background Observers
         #-------------------
-        self.nobackground_widgets_to_observe = [self.RBC.filter_shape_dropdown, self.RBC.filter_size_text, self.RBC.pad_mode_dropdown]
+        # Set up observer for the pad mode dropdown value
+        self.RBC.nobackground_widgets[self.NB.i_pad_mode].observe(self.update_nobackground_layout, names='value')
+        self.nobackground_widgets_to_observe = list(self.RBC.nobackground_widgets.values())
     
         for widget in self.nobackground_widgets_to_observe:
             widget.observe(self.update_nobackground, names='value')
@@ -3059,7 +3072,7 @@ class InteractivePlot:
         self.update_contours(self.M.mask, update_dataList_set=self.CL.dataList[self.CL.i_smoothed])
     
     # Update the layout to include the smoothing controls
-    def update_layout(self, change):
+    def update_smoothing_layout(self, change):
         """
         Updates the widget layout based on the selected smoothing method
         """
@@ -3073,11 +3086,21 @@ class InteractivePlot:
     #-------------------
     # Update Remove Background
     #-------------------
+    def update_nobackground_parameters_from_widgets(self):
+        """
+        Updates nobackground parameters based on widget values.
+        """
+        for param_index, widget in self.RBC.nobackground_widgets.items():
+            self.NB.nobackground_parameters[param_index]['value'] = widget.value
+
     # Define an update function to recalculate smoothing parameters and update the plot
     def update_nobackground(self, change):
         """
         Removes image background according to selected parameters and updates the plot.
         """
+        # Update the nobackground parameter dictionary with the new widget values
+        self.update_nobackground_parameters_from_widgets()
+
         # Remove the background
         self.ID.image_nobackground, self.ID.estimated_background, self.ID.image_difference = self.NB.remove_background(self.ID.image_raw, self.RBC.filter_size_text.value, self.RBC.filter_shape_dropdown.value, self.RBC.pad_mode_dropdown.value)
 
@@ -3087,6 +3110,19 @@ class InteractivePlot:
         # Calculate new level values and update the contours
         self.CL.calculate_nobackground_levels(self.AC.averaging_threshold_percentage.value)
         self.update_contours(self.M.mask, update_dataList_set=self.CL.dataList[self.CL.i_nobackground])
+
+    def update_nobackground_layout(self, change):
+        """
+        Updates the widget layout based on the selected nobackground method
+        """
+        selected_mode = self.RBC.nobackground_widgets[self.NB.i_pad_mode].value
+        new_controls = [self.DC.data_controls, self.CC.checkbox_controls, self.AC.averaging_controls, self.SC.smoothing_controls, self.RBC.remove_background_controls, self.MDC.mask_data_controls]
+        # If the selected mode is 'constant', include the pad_value widget
+        if selected_mode == self.NB.padding_options[self.NB.i_constant]:
+            self.RBC.remove_background_controls.children = [self.RBC.remove_background_label, self.RBC.filter_shape_dropdown, self.RBC.filter_size_text, self.RBC.pad_mode_dropdown, self.RBC.pad_value]
+        else:
+            self.RBC.remove_background_controls.children = [self.RBC.remove_background_label, self.RBC.filter_shape_dropdown, self.RBC.filter_size_text, self.RBC.pad_mode_dropdown]
+        self.main_layout.children = tuple(new_controls)
     #-------------------
 #-------------------End InteractivePlot
 
@@ -3382,7 +3418,7 @@ class UserInterface:
                         Standard deviation of the Gaussian kernel, controlling the extent of smoothing.
                 
                 Bivariate Spline:
-                    s : float, optional, default: None (reverts to self.rounded_min)
+                    s : float, optional, default: None (reverts to self.ID.rounded_min)
                         Controls the trade-off between fitting the data closely and producing a smooth surface.
         
                 Local Regression (LOESS):
@@ -3433,7 +3469,7 @@ class UserInterface:
                 Non-local Means Denoising:
                     patch_size : int, optional, default: None (reverts to 10)
                         Size of the patch used for similarity calculation.
-                    h : float, optional, default: None (reverts to self.rounded_min)
+                    h : float, optional, default: None (reverts to self.ID.rounded_min)
                         Filtering strength, controlling the degree of denoising.
 
         Returns:
