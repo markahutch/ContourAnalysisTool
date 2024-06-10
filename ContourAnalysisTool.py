@@ -151,7 +151,7 @@ class Utilities:
         return text
 
     @staticmethod
-    def create_int_text(description, value, min_value, max_value, width='150px', **kwargs):
+    def create_int_text(description, value, min_value, max_value, step=1, width='150px', **kwargs):
         """
         Creates a text input widget for integer values with observe functionality.
         
@@ -168,7 +168,7 @@ class Utilities:
         """
         import ipywidgets as widgets
 
-        text = widgets.BoundedIntText(description=description, value=value, min=min_value, max=max_value, step=1, layout=widgets.Layout(width=width))
+        text = widgets.BoundedIntText(description=description, value=value, min=min_value, max=max_value, step=step, layout=widgets.Layout(width=width))
         text.observe(lambda change: Utilities.enforce_limits(change, text), names='value')
         return text
 
@@ -900,11 +900,13 @@ class NoBackground:
         self.padding_options[self.i_constant]  = 'constant'
         
         # Set the initial/default values
-        self.initial_filter_size  = 25
-        self.initial_filter_shape = self.filter_shape_options[0]
-        self.initial_pad_mode     = self.padding_options[0]
-        self.initial_pad_value    = 0
-
+        self.initial_filter_size_max  = np.max(self.ID.image_raw.shape)
+        self.initial_filter_size      = int(self.initial_filter_size_max/6)
+        self.initial_filter_size_step = int(self.initial_filter_size_max/100)
+        self.initial_filter_shape     = self.filter_shape_options[0]
+        self.initial_pad_mode         = self.padding_options[0]
+        self.initial_pad_value        = 0
+  
         # Dictionary for the nobackground parameters and relevant information for the widgets
         self.i_filter_shape = 0
         self.i_filter_size  = 1
@@ -923,8 +925,8 @@ class NoBackground:
                 'var_name':    'filter_size',
                 'value':       self.initial_filter_size,
                 'min_value':   1,
-                'max_value':   100,
-                'step':        1
+                'max_value':   self.initial_filter_size_max,
+                'step':        self.initial_filter_size_step
             },
             self.i_pad_mode: {
                 'description': 'Padding',
