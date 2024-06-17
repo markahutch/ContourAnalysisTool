@@ -1058,9 +1058,11 @@ class Mask:
         # Define the list of filter shapes
         self.i_circle_mask = 0
         self.i_square_mask = 1
-        self.mask_shape_options                     = [None] * 2
+        self.i_draw_mask   = 2
+        self.mask_shape_options                     = [None] * 3
         self.mask_shape_options[self.i_circle_mask] = 'circle'
         self.mask_shape_options[self.i_square_mask] = 'square'
+        self.mask_shape_options[self.i_draw_mask]   = 'draw'
 
         # Set default values for the mask
         self.initial_mask_xpos   = (self.ID.xmin + self.ID.xmax) / 2
@@ -1377,7 +1379,7 @@ class ContourLevels:
         self.update_global_levels_nobackground()
 
         # Contour objects for all of the global contour levels
-        self.CS              = plt.contour(self.ID.X, self.ID.Y, self.ID.image_raw,          levels=self.global_levels_raw,              linewidths=0)
+        self.CS              = plt.contour(self.ID.X, self.ID.Y, self.ID.image_raw,          levels=self.global_levels_raw,          linewidths=0)
         self.CS_smoothed     = plt.contour(self.ID.X, self.ID.Y, self.ID.image_smoothed,     levels=self.global_levels_smoothed,     linewidths=0)
         self.CS_nobackground = plt.contour(self.ID.X, self.ID.Y, self.ID.image_nobackground, levels=self.global_levels_nobackground, linewidths=0)
 
@@ -2493,14 +2495,17 @@ class PrintData:
         # Get the text to handle the mask
         if self.custom_mask is None:
             if self.MDC.mask_yes_no_dropdown.value == 'Yes':
-                # Extract mask variables and values from widgets
-                mask_xpos  = self.MDC.mask_xpos_text.value
-                mask_ypos  = self.MDC.mask_ypos_text.value
-                mask_shape = self.MDC.mask_shape_dropdown.value
-                mask_size  = self.MDC.mask_size_text.value
-    
-                # Format and print the values for the create_mask function
-                mask_text = f"{instance_name}.M.create_mask(mask_xpos={mask_xpos}, mask_ypos={mask_ypos}, mask_shape='{mask_shape}', mask_size={mask_size})"
+                if self.MDC.mask_shape_dropdown.value == self.M.mask_shape_options[self.M.i_draw_mask]:
+                    mask_text = f"{instance_name}.M.mask"
+                else:
+                    # Extract mask variables and values from widgets
+                    mask_xpos  = self.MDC.mask_xpos_text.value
+                    mask_ypos  = self.MDC.mask_ypos_text.value
+                    mask_shape = self.MDC.mask_shape_dropdown.value
+                    mask_size  = self.MDC.mask_size_text.value
+        
+                    # Format and print the values for the create_mask function
+                    mask_text = f"{instance_name}.M.create_mask(mask_xpos={mask_xpos}, mask_ypos={mask_ypos}, mask_shape='{mask_shape}', mask_size={mask_size})"
             else:
                 mask_text = 'None'
         else:
@@ -2519,10 +2524,14 @@ class PrintData:
             print('')
             print('--------------------------------------------------------------------------')
             print('Copy and run the following code to reproduce the contours programatically:')
-            print(' (red text must first be replaced with the appropriate input variables)')
-            print('--------------------------------------------------------------------------')
-            print(self.color_text_green('# Setup User Interface'))
-            print(f"{instance_name} = {self.file_name}.{self.interface_name}({image_text}, {extent_text}, interactive=False)")
+            print(f"   (assuming the instance name for this interactive session is {self.color_text_red(instance_name)})")
+            # print(' (red text must first be replaced with the appropriate input variables)')
+            # print(self.color_text_green('# Alternatively, using a non-interactive instance:'))
+            # if self.MDC.mask_shape_dropdown.value == self.M.mask_shape_options[self.M.i_draw_mask]:
+            #     print(f"# {instance_name} = {self.file_name}.{self.interface_name}({image_text}, {extent_text}, interactive=False, mask={self.color_text_red('[mask]')})")
+            # else:
+            #     print(f"# {instance_name} = {self.file_name}.{self.interface_name}({image_text}, {extent_text}, interactive=False)")
+            print('--------------------------------------------------------------------------')            
 
         # If Raw contours are visible, print executable code to produce the raw image and contours
         if any(visible_flags_raw):
@@ -2591,8 +2600,127 @@ class PrintData:
                         
                         # Print the sub-key and its corresponding value, left-aligned for clarity
                         print(f"    {sub_key.ljust(max_sub_key_length)}: {value}")
-
 #-------------------End PrintData
+
+
+#-------------------
+# Paint Custom Mask
+#-------------------
+class PaintPixelMask:
+    """
+    A class to draw a custom pixel mask during an interactive session.
+    """
+    def __init__(self, ID):
+        """
+        Initializes the PaintPixelMask with default settings and widgets.
+
+        Args:
+            ID  (object): The instance of the Image Data (ID) class.
+        """
+        self.ID = ID
+
+        # Match grid size to image dimensions
+        self.grid_size  = self.ID.image_raw.shape[:2]
+
+        # History of grid states for undo
+        self.history    = []
+
+        # Brush shape options
+        self.i_circle_brush = 0
+        self.i_square_brush = 1
+        self.brush_shape_options                      = [None] * 2
+        self.brush_shape_options[self.i_circle_brush] = 'circle'
+        self.brush_shape_options[self.i_square_brush] = 'square'
+
+        # Brush mode options
+        self.i_mask_brush   = 0
+        self.i_redraw_brush = 1
+        self.brush_mode_options                      = [None] * 2
+        self.brush_mode_options[self.i_mask_brush]   = 'Mask'
+        self.brush_mode_options[self.i_redraw_brush] = 'Redraw'
+
+        # Initial brush options
+        self.initial_brush_shape = self.brush_shape_options[self.i_circle_brush]
+        self.initial_brush_mode  = self.brush_mode_options[self.i_mask_brush]
+        self.initial_brush_size  = 10
+
+        # Dictionary for brush parameters and relevant information for the widgets
+        self.i_brush_shape = 0
+        self.i_brush_mode  = 1
+        self.i_brush_size  = 2
+        self.brush_parameters = {
+            self.i_brush_shape: {
+                'description': 'Shape',
+                'var_name':    'brush_shape',
+                'value':       self.initial_brush_shape,
+                'options':     self.brush_shape_options,
+                'layout':      {'width': '170px'}
+            },
+            self.i_brush_mode: {
+                'description': 'Mode',
+                'var_name':    'brush_mode',
+                'value':       self.initial_brush_mode,
+                'options':     self.brush_mode_options,
+                'layout':      {'width': '170px'}
+            },
+            self.i_brush_size: {
+                'description': 'Size',
+                'var_name':    'brush_size',
+                'value':       self.initial_brush_size,
+                'min_value':   1,
+                'max_value':   np.max(self.ID.image_raw.shape),
+                'step':        1
+            }
+        }
+
+        # Set up the drawing widgets
+        self.setup_widgets()
+
+    def setup_widgets(self):
+        """
+        Sets up the interactive widgets for drawing.
+
+        Widgets created include:
+        - Dropdown for brush shape
+        - Dropdown for brush mode
+        - IntText for brush size
+        - Button for undoing the last action
+        - Button for applying the mask changes
+        """
+        import ipywidgets as widgets
+
+        # Create a label for the brush options
+        self.brush_label = widgets.Label(value='Brush options:', layout={'margin': '0px 0px 0px 0px'})
+
+        # Create dropdown menus and text boxes for background removal parameters
+        self.brush_shape_dropdown = widgets.Dropdown(**self.brush_parameters[self.i_brush_shape])
+        self.brush_mode_dropdown  = widgets.Dropdown(**self.brush_parameters[self.i_brush_mode])
+        self.brush_size_text      = Utilities.create_int_text(**self.brush_parameters[self.i_brush_size])
+
+        # Create a dictionary to store the widgets
+        self.brush_widgets = {
+            self.i_brush_shape: self.brush_shape_dropdown,
+            self.i_brush_mode:  self.brush_mode_dropdown,
+            self.i_brush_size:  self.brush_size_text
+        }
+
+        # Create Button for Undo
+        self.undo_button = widgets.Button(
+            description  = 'Undo',
+            button_style = 'info',
+            layout=widgets.Layout(width='70px')
+        )
+
+        # Create Button for Undo
+        self.apply_button = widgets.Button(
+            description  = 'Apply',
+            button_style = 'info',
+            layout=widgets.Layout(width='70px')
+        )
+
+        # Collect the widgets and organise them into a horizontal display box
+        self.brush_controls = widgets.HBox([self.brush_label, self.brush_shape_dropdown, self.brush_mode_dropdown, self.brush_size_text, self.undo_button, self.apply_button])
+#-------------------End PaintPixelMask
 
 
 #-------------------
@@ -2603,7 +2731,7 @@ class InteractivePlot:
     A class to manage interactive plotting and widget updates.
     """
     
-    def __init__(self, ID, S, NB, M, CL, DC, CC, AC, SC, RBC, MDC, PD, custom_mask=None):
+    def __init__(self, ID, S, NB, M, CL, DC, CC, AC, SC, RBC, MDC, PD, PPM, custom_mask=None):
         """
         Initializes the InteractivePlot instance.
 
@@ -2620,6 +2748,7 @@ class InteractivePlot:
             RBC (object): The instance of the Remove Background Controls (RBC) class.
             MDC (object): The instance of the Mask Data Controls (MDC) class.
             PD  (object): The instance of the Print Data (PD) class.
+            PPM (object): The instance of the Paint Pixel Mask (PPM) class
             custom_mask: A custom mask if provided.
         """
         import ipywidgets as widgets
@@ -2637,6 +2766,7 @@ class InteractivePlot:
         self.RBC = RBC
         self.MDC = MDC
         self.PD  = PD
+        self.PPM = PPM
         self.custom_mask = custom_mask
 
         Utilities.set_matplotlib_backend()
@@ -2662,7 +2792,10 @@ class InteractivePlot:
         #-------------------
         # Define the layout using widgets
         if self.custom_mask is None:
-            self.main_layout = widgets.VBox([self.DC.data_controls, self.CC.checkbox_controls, self.AC.averaging_controls, self.SC.smoothing_controls, self.RBC.remove_background_controls, self.MDC.mask_data_controls])
+            if self.MDC.mask_shape_dropdown.value == self.M.mask_shape_options[self.M.i_draw_mask]:
+                self.main_layout = widgets.VBox([self.DC.data_controls, self.CC.checkbox_controls, self.AC.averaging_controls, self.SC.smoothing_controls, self.RBC.remove_background_controls, self.MDC.mask_data_controls, self.PPM.brush_controls])
+            else:
+                self.main_layout = widgets.VBox([self.DC.data_controls, self.CC.checkbox_controls, self.AC.averaging_controls, self.SC.smoothing_controls, self.RBC.remove_background_controls, self.MDC.mask_data_controls])
         else:
             self.main_layout = widgets.VBox([self.DC.data_controls, self.CC.checkbox_controls, self.AC.averaging_controls, self.SC.smoothing_controls, self.RBC.remove_background_controls])
             
@@ -2756,6 +2889,33 @@ class InteractivePlot:
         if self.MDC.mask_yes_no_dropdown.value == 'Yes':
             self.update_masked_figure({'new': 'Yes'})
         #-------------------
+
+        #-------------------
+        # Paint Pixel Mask Observers
+        #-------------------
+        # Add brush controls when 'draw' is selected in the mask shape dropdown menu
+        self.MDC.mask_shape_dropdown.observe(self.update_pixel_mask_layout, names='value')
+        self.MDC.mask_yes_no_dropdown.observe(self.update_pixel_mask_layout, names='value')
+
+        # Update the brush parameter dictionary whenever any brush widgets are changed
+        self.brush_widgets_to_observe = list(self.PPM.brush_widgets.values())
+        for widget in self.brush_widgets_to_observe:
+            widget.observe(self.update_brush_parameters_from_widgets, names='value')
+
+        # Undo last drawing action
+        self.PPM.undo_button.on_click(self.paint_undo)
+
+        # Apply the mask changes (i.e. recalculate and draw contours)
+        self.PPM.apply_button.on_click(self.apply_pixel_map)
+
+        # Connect click events on the canvas
+        self.pressed = False
+        self.cursor_patch = None
+        self.ID.hF.canvas.mpl_connect('motion_notify_event',  self.paint_on_motion)
+        self.ID.hF.canvas.mpl_connect('button_press_event',   self.paint_on_press)
+        self.ID.hF.canvas.mpl_connect('button_release_event', self.paint_on_release)
+        self.ID.hF.canvas.mpl_connect('motion_notify_event',  self.update_cursor)
+        #-------------------
     
         #-------------------
         # Checkbox Observers
@@ -2808,8 +2968,12 @@ class InteractivePlot:
         # Observe changes in the scaling dropdown
         self.DC.scaling_toggle.observe(self.update_printed_info, names='value')
 
-        # Observe changes in the mask dropdown
+        # Observe changes in the mask options
         self.MDC.mask_yes_no_dropdown.observe(self.update_printed_info, names='value')
+        self.MDC.mask_xpos_text.observe(self.update_printed_info, names='value')
+        self.MDC.mask_ypos_text.observe(self.update_printed_info, names='value')
+        self.MDC.mask_shape_dropdown.observe(self.update_printed_info, names='value')
+        self.MDC.mask_size_text.observe(self.update_printed_info, names='value')
         
         # Observe changes in the smoothing dropdown
         self.SC.smoothing_dropdown.observe(self.update_printed_info, names='value')
@@ -2969,7 +3133,7 @@ class InteractivePlot:
         # Create the mask
         if self.custom_mask is not None:
             self.M.mask = self.custom_mask
-        elif self.MDC.mask_yes_no_dropdown.value == 'Yes' and self.custom_mask is None:
+        elif self.MDC.mask_yes_no_dropdown.value == 'Yes' and self.custom_mask is None and self.MDC.mask_shape_dropdown.value != self.M.mask_shape_options[self.M.i_draw_mask]:
             self.M.mask = self.M.create_mask(mask_xpos  = self.MDC.mask_xpos_text.value, 
                                              mask_ypos  = self.MDC.mask_ypos_text.value, 
                                              mask_shape = self.MDC.mask_shape_dropdown.value, 
@@ -2985,6 +3149,210 @@ class InteractivePlot:
 
         # Mask the new contours
         self.update_contours(self.M.mask)
+    #-------------------
+
+
+    #-------------------
+    # Update Paint Pixel Mask
+    #-------------------
+    def update_brush_parameters_from_widgets(self):
+        """
+        Updates brush parameters based on widget values.
+        """
+        for param_index, widget in self.PPM.brush_widgets.items():
+            self.PPM.brush_parameters[param_index]['value'] = widget.value
+
+    def paint_undo(self, event):
+        """
+        Undoes the last paint action on the mask.
+        """
+        if self.PPM.history:
+            self.M.mask = self.PPM.history.pop()
+            self.update_cmap()
+            print('Undo last action')
+
+    def is_drawing_enabled(self):
+        """
+        Returns True if drawing is enabled based on the current selections.
+        """
+        selected_mode = self.MDC.mask_shape_dropdown.value
+        return (
+            selected_mode == self.M.mask_shape_options[self.M.i_draw_mask]
+            and self.MDC.mask_yes_no_dropdown.value == 'Yes'
+            and not self.is_toolbar_mode_active()
+        )
+
+    def is_toolbar_mode_active(self):
+        """
+        Checks if a toolbar mode (zoom or pan) is active. Returns True if zoom or pan is active.
+        """
+        toolbar = self.ID.hF.canvas.toolbar
+        return toolbar.mode in ['zoom rect', 'pan/zoom']
+
+    def paint_on_press(self, event):
+        """
+        Initiates the painting action when the mouse button is pressed and controls are visible.
+        """
+        if not self.is_drawing_enabled():
+            return  # Exit if drawing is not enabled
+
+        if event.inaxes != self.ID.hA:
+            return
+        
+        self.pressed = True
+        self.update_pixel_grid(event)
+
+    def paint_on_motion(self, event):
+        """
+        Continues the painting action as the mouse moves with the button pressed (when controls are visible)
+        """
+        if not self.is_drawing_enabled():
+            return  # Exit if drawing is not enabled
+        
+        if not self.pressed or event.inaxes != self.ID.hA:
+            return
+        
+        self.update_pixel_grid(event)
+
+
+    def paint_on_release(self, event):
+        """
+        Ends the painting action when the mouse button is released.
+        """
+        self.pressed = False
+
+    def update_pixel_grid(self, event):
+        """
+        Updates the pixel mask based on the current brush settings and mouse position.
+        """
+        if event.inaxes != self.ID.hA:
+            return
+
+        # Calculate the grid indices from the event coordinates
+        x_idx = int((event.xdata - self.ID.xmin) / self.ID.dx)
+        y_idx = int((event.ydata - self.ID.ymin) / self.ID.dy)
+    
+        if 0 <= x_idx < self.PPM.grid_size[1] and 0 <= y_idx < self.PPM.grid_size[0]:
+            # Compute half the size of the brush
+            half_brush = self.PPM.brush_size_text.value // 2
+            
+            # Create a copy of the current mask grid and store it in history for undo functionality
+            current_grid = np.copy(self.M.mask)
+            self.PPM.history.append(current_grid)
+            
+            # Check the current brush mode (Redraw or Mask/Erase)
+            if self.PPM.brush_mode_dropdown.value == self.PPM.brush_mode_options[self.PPM.i_redraw_brush]:
+                # Redraw mode
+                if self.PPM.brush_shape_dropdown.value == self.PPM.brush_shape_options[self.PPM.i_square_brush]:
+                    # Square brush
+                    # Iterate over the square area covered by the brush
+                    for i in range(max(0, y_idx - half_brush), min(self.PPM.grid_size[0], y_idx + half_brush + 1)):
+                        for j in range(max(0, x_idx - half_brush), min(self.PPM.grid_size[1], x_idx + half_brush + 1)):
+                            self.M.mask[i, j] = True  # Set mask pixels to True (painted)
+                elif self.PPM.brush_shape_dropdown.value == self.PPM.brush_shape_options[self.PPM.i_circle_brush]:
+                    # Circular brush
+                    # Iterate over the square bounding box of the circle
+                    for i in range(max(0, y_idx - half_brush), min(self.PPM.grid_size[0], y_idx + half_brush + 1)):
+                        for j in range(max(0, x_idx - half_brush), min(self.PPM.grid_size[1], x_idx + half_brush + 1)):
+                            # Check if the point (i, j) is within the circular brush
+                            if (i - y_idx) ** 2 + (j - x_idx) ** 2 <= half_brush ** 2:
+                                self.M.mask[i, j] = True  # Set mask pixels to True (painted)
+            
+            elif self.PPM.brush_mode_dropdown.value == self.PPM.brush_mode_options[self.PPM.i_mask_brush]:
+                # Mask (erase) mode
+                if self.PPM.brush_shape_dropdown.value == self.PPM.brush_shape_options[self.PPM.i_square_brush]:
+                    # Square brush
+                    # Iterate over the square area covered by the brush
+                    for i in range(max(0, y_idx - half_brush), min(self.PPM.grid_size[0], y_idx + half_brush + 1)):
+                        for j in range(max(0, x_idx - half_brush), min(self.PPM.grid_size[1], x_idx + half_brush + 1)):
+                            self.M.mask[i, j] = False  # Set mask pixels to False (erased)
+                elif self.PPM.brush_shape_dropdown.value == self.PPM.brush_shape_options[self.PPM.i_circle_brush]:
+                    # Circular brush
+                    # Iterate over the square bounding box of the circle
+                    for i in range(max(0, y_idx - half_brush), min(self.PPM.grid_size[0], y_idx + half_brush + 1)):
+                        for j in range(max(0, x_idx - half_brush), min(self.PPM.grid_size[1], x_idx + half_brush + 1)):
+                            # Check if the point (i, j) is within the circular brush
+                            if (i - y_idx) ** 2 + (j - x_idx) ** 2 <= half_brush ** 2:
+                                self.M.mask[i, j] = False  # Set mask pixels to False (erased)
+    
+            # Update the background colormap
+            self.update_cmap()
+
+    def apply_pixel_map(self, change):
+        """
+        Applies the current pixel map changes by recalculating and drawing contours
+        """
+        # Calculate the Last Closed Contour levels
+        self.CL.calculate_lcc_levels()
+
+        # Mask the new contours
+        self.update_contours(self.M.mask)
+
+    def update_pixel_mask_layout(self, change):
+        """
+        Updates the widget layout to add drawing tools for the pixel mask
+        """
+        import ipywidgets as widgets
+
+        if self.is_drawing_enabled():
+            # Reset the mask when drawing is first enabled
+            self.M.mask = np.ones_like(self.ID.image_raw)
+            self.update_masked_figure(change)
+
+            # Use a reduced set of mask widgets when drawing is enabled
+            reduced_mask_controls = widgets.HBox([self.MDC.mask_data_label, self.MDC.mask_yes_no_dropdown, self.MDC.mask_shape_dropdown])
+            new_controls = [self.DC.data_controls, self.CC.checkbox_controls, self.AC.averaging_controls, self.SC.smoothing_controls, self.RBC.remove_background_controls, reduced_mask_controls, self.PPM.brush_controls]
+        else:
+            # Restore all of the mask widgets when drawing is disabled
+            new_controls = [self.DC.data_controls, self.CC.checkbox_controls, self.AC.averaging_controls, self.SC.smoothing_controls, self.RBC.remove_background_controls, self.MDC.mask_data_controls]
+        self.main_layout.children = tuple(new_controls)
+
+    def update_cursor(self, event):
+        """
+        Updates the cursor representation with the brush size and shape.
+        """
+        import matplotlib.patches as patches
+
+        if not self.is_drawing_enabled() or event.inaxes != self.ID.hA:
+            if self.cursor_patch is not None:
+                self.cursor_patch.set_visible(False)
+                self.ID.hA.figure.canvas.draw_idle()
+            return
+
+        # Get brush parameters
+        brush_size_index_units = self.PPM.brush_size_text.value
+
+        # Convert brush size from index units to physical units
+        brush_size_physical_x = brush_size_index_units * self.ID.dx
+        brush_size_physical_y = brush_size_index_units * self.ID.dy
+
+        brush_shape = self.PPM.brush_shape_dropdown.value
+
+        if self.cursor_patch is None:
+            # Initialize the cursor patch if none exists
+            if brush_shape == self.PPM.brush_shape_options[self.PPM.i_circle_brush]:
+                # Make circle patch
+                self.cursor_patch = patches.Circle((event.xdata, event.ydata), radius=brush_size_physical_x / 2, edgecolor='black', fill=False)
+            elif brush_shape == self.PPM.brush_shape_options[self.PPM.i_square_brush]:
+                # Make square patch
+                self.cursor_patch = patches.Rectangle((event.xdata - brush_size_physical_x / 2, event.ydata - brush_size_physical_y / 2), brush_size_physical_x, brush_size_physical_y, edgecolor='black', fill=False)
+            
+            self.ID.hA.add_patch(self.cursor_patch)
+        else:
+            # Update the existing cursor patch
+            if brush_shape == self.PPM.brush_shape_options[self.PPM.i_circle_brush]:
+                # Update circle patch
+                self.cursor_patch.set_center((event.xdata, event.ydata))
+                self.cursor_patch.set_radius(brush_size_physical_x / 2)
+            elif brush_shape == self.PPM.brush_shape_options[self.PPM.i_square_brush]:
+                # Update square patch
+                self.cursor_patch.set_xy((event.xdata - brush_size_physical_x / 2, event.ydata - brush_size_physical_y / 2))
+                self.cursor_patch.set_width(brush_size_physical_x)
+                self.cursor_patch.set_height(brush_size_physical_y)
+
+        # Update figure
+        self.cursor_patch.set_visible(True)
+        self.ID.hA.figure.canvas.draw_idle()
     #-------------------
     
     
@@ -3009,7 +3377,6 @@ class InteractivePlot:
         Update the background colormap when the colarbar limits are changed
         """
         self.update_cmap()
-    
     #-------------------
     
     
@@ -3339,8 +3706,9 @@ class UserInterface:
             self.PD  = PrintData(self.ID, self.M, self.CL, self.MDC, self.SC, self.DC, self.CC, self.AC, 
                                  class_name, file_name, self.get_smoothing_parameters, self.get_nobackground_params,
                                  custom_mask=mask)
+            self.PPM = PaintPixelMask(self.ID)
             self.IP  = InteractivePlot(self.ID, self.S,  self.NB, self.M,   self.CL,  self.DC, 
-                                       self.CC, self.AC, self.SC, self.RBC, self.MDC, self.PD, 
+                                       self.CC, self.AC, self.SC, self.RBC, self.MDC, self.PD, self.PPM,
                                        custom_mask=mask)
 
     #-------------------
