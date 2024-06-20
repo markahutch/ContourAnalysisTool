@@ -1014,15 +1014,6 @@ class NoBackground:
                 padded_image = np.pad(grayscale_image, filter_size, mode=pad_mode)
         else:
             raise ValueError(f"Invalid padding mode. Choose one of the following: {', '.join(self.padding_options)}.")
-
-        # if pad_mode == self.padding_options[self.i_reflect]:
-        #     padded_image = np.pad(grayscale_image, filter_size, mode=self.padding_options[self.i_reflect])
-        # elif pad_mode == self.padding_options[self.i_symmetric]:
-        #     padded_image = np.pad(grayscale_image, filter_size, mode=self.padding_options[self.i_symmetric])
-        # elif pad_mode == self.padding_options[self.i_constant]:
-        #     padded_image = np.pad(grayscale_image, filter_size, constant_values=pad_value)
-        # else:
-        #     raise ValueError(f"Invalid padding mode. Choose one of the following: {', '.join(self.padding_options.values())}.")
     
         # Crop the padded image to match the raw size
         cropped_image = padded_image[:grayscale_image.shape[0], :grayscale_image.shape[1]]
@@ -3954,7 +3945,7 @@ class UserInterface:
                     
                 pad_mode : str, optional, default: None (reverts to 'reflect')
                     Method for padding the image boundaries to reduce filter artifacts during background estimation.
-                    Available options: ['reflect', 'symmetric', 'constant']
+                    Available options: ['reflect', 'symmetric', 'wrap', 'constant', 'linear_ramp', 'edge', 'mean', 'median', 'minimum', 'maximum']
                 
                 pad_value : float, optional, default: None (reverts to 0)
                     Value used for padding the image when the padding mode is set to constant, controlling the value of the padding pixels.
