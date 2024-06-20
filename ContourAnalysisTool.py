@@ -891,13 +891,27 @@ class NoBackground:
         self.filter_shape_options[self.i_square_filter] = 'square'
         
         # Define the list of padding modes for the image edges
-        self.i_reflect   = 0
-        self.i_symmetric = 1
-        self.i_constant  = 2
-        self.padding_options                   = [None] * 3
-        self.padding_options[self.i_reflect]   = 'reflect'
-        self.padding_options[self.i_symmetric] = 'symmetric'
-        self.padding_options[self.i_constant]  = 'constant'
+        self.i_reflect     = 0
+        self.i_symmetric   = 1
+        self.i_wrap        = 2
+        self.i_constant    = 3
+        self.i_linear_ramp = 4
+        self.i_edge        = 5
+        self.i_mean        = 6
+        self.i_median      = 7
+        self.i_minimum     = 8
+        self.i_maximum     = 9
+        self.padding_options                     = [None] * 10
+        self.padding_options[self.i_reflect]     = 'reflect'
+        self.padding_options[self.i_symmetric]   = 'symmetric'
+        self.padding_options[self.i_wrap]        = 'wrap'
+        self.padding_options[self.i_constant]    = 'constant'
+        self.padding_options[self.i_linear_ramp] = 'linear_ramp'
+        self.padding_options[self.i_edge]        = 'edge'
+        self.padding_options[self.i_mean]        = 'mean'
+        self.padding_options[self.i_median]      = 'median'
+        self.padding_options[self.i_minimum]     = 'minimum'
+        self.padding_options[self.i_maximum]     = 'maximum'
         
         # Set the initial/default values
         self.initial_filter_size_max  = np.max(self.ID.image_raw.shape)
@@ -993,14 +1007,22 @@ class NoBackground:
         binary_background = image_uint8 > threshold_value
     
         # Apply padding to boundaries to reduce filter artefacts
-        if pad_mode == self.padding_options[self.i_reflect]:
-            padded_image = np.pad(grayscale_image, filter_size, mode=self.padding_options[self.i_reflect])
-        elif pad_mode == self.padding_options[self.i_symmetric]:
-            padded_image = np.pad(grayscale_image, filter_size, mode=self.padding_options[self.i_symmetric])
-        elif pad_mode == self.padding_options[self.i_constant]:
-            padded_image = np.pad(grayscale_image, filter_size, constant_values=pad_value)
+        if pad_mode in self.padding_options:
+            if pad_mode == self.padding_options[self.i_constant]:
+                padded_image = np.pad(grayscale_image, filter_size, constant_values=pad_value)
+            else:
+                padded_image = np.pad(grayscale_image, filter_size, mode=pad_mode)
         else:
-            raise ValueError(f"Invalid padding mode. Choose one of the following: {', '.join(self.padding_options.values())}.")
+            raise ValueError(f"Invalid padding mode. Choose one of the following: {', '.join(self.padding_options)}.")
+
+        # if pad_mode == self.padding_options[self.i_reflect]:
+        #     padded_image = np.pad(grayscale_image, filter_size, mode=self.padding_options[self.i_reflect])
+        # elif pad_mode == self.padding_options[self.i_symmetric]:
+        #     padded_image = np.pad(grayscale_image, filter_size, mode=self.padding_options[self.i_symmetric])
+        # elif pad_mode == self.padding_options[self.i_constant]:
+        #     padded_image = np.pad(grayscale_image, filter_size, constant_values=pad_value)
+        # else:
+        #     raise ValueError(f"Invalid padding mode. Choose one of the following: {', '.join(self.padding_options.values())}.")
     
         # Crop the padded image to match the raw size
         cropped_image = padded_image[:grayscale_image.shape[0], :grayscale_image.shape[1]]
@@ -2523,7 +2545,7 @@ class PrintData:
         if any(self.CC.are_lines_visible()):
             print('')
             print('--------------------------------------------------------------------------')
-            print('Copy and run the following code to reproduce the contours programatically:')
+            print('Copy and run the following code to reproduce the contours programmatically:')
             print(f"   (assuming the instance name for this interactive session is {self.color_text_red(instance_name)})")
             # print(' (red text must first be replaced with the appropriate input variables)')
             # print(self.color_text_green('# Alternatively, using a non-interactive instance:'))
@@ -3507,7 +3529,7 @@ class InteractivePlot:
 class UserInterface:
     """
     The ContourAnalysisTool provides users with a set of tools to analyse/process 2D images
-    to interactively and programatically identify regions of interest (e.g. high density
+    to interactively and programmatically identify regions of interest (e.g. high density
     regions or background signals). The UserInterface class is a user-friendly interface
     that helps users analyse their image with minimal coding, either in its raw form or 
     after applying smoothing or background-removal techniques. These choices are referenced
@@ -3548,7 +3570,7 @@ class UserInterface:
     underlying classes/functions/variables can still be directly manipulated/utilised by
     the user if desired. 
 
-    The tool can be operated either interactively or programatically. The interactive feature 
+    The tool can be operated either interactively or programmatically. The interactive feature 
     is particularly useful for quickly visualising changes to method parameters and/or 
     comparing different contour calculation methods and image processing techniques. The 
     simplest way to access the interactive tool is by running:
@@ -3558,7 +3580,7 @@ class UserInterface:
     where image is the user-provided data and extent = [xmin, xmax, ymin, ymax]. After the
     optimal configuration is obtained, the user can toggle the print button below the figure
     to obtain the numerical values of their selected contours and the executable code needed
-    to reproduce those values and contours programatically.
+    to reproduce those values and contours programmatically.
 
     Alternatively, one can bypass the interactive feature and directly obtain the contour,
     the processed image data, and the figure. Here are some examples demonstrating how this
