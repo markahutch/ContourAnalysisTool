@@ -2352,20 +2352,22 @@ class MaskDataControls:
         self.mask_size_text = Utilities.create_int_text('Size', value=self.M.initial_mask_size, min_value=1, max_value=max(len(self.ID.x), len(self.ID.y)))
 
         # Create input boxes for setting the x position of the mask centre
-        self.mask_xpos_text = widgets.FloatText(
-            value=self.M.initial_mask_xpos,  # Set default value
+        self.mask_xpos_text = Utilities.create_float_text(
             description=' Center (x,y):',
-            disabled=False,
-            step=self.M.initial_x_step_size)
-        self.mask_xpos_text.layout.width = '190px'
+            value=self.M.initial_mask_xpos,  # Set default value
+            min_value=self.ID.xmin,
+            max_value=self.ID.xmax,
+            step=self.M.initial_x_step_size,
+            width='190px')
 
         # Create input boxes for setting the y position of the mask centre
-        self.mask_ypos_text = widgets.FloatText(
-            value=self.M.initial_mask_ypos,  # Set default value
+        self.mask_ypos_text = Utilities.create_float_text(
             description='',
-            disabled=False,
-            step=self.M.initial_y_step_size)
-        self.mask_ypos_text.layout.width = '100px'
+            value=self.M.initial_mask_ypos,  # Set default value
+            min_value=self.ID.ymin,
+            max_value=self.ID.ymax,
+            step=self.M.initial_y_step_size,
+            width='100px')
 
         # Function to update the options visibility based on the yes/no dropdown value
         def update_mask_options_visibility(change):
