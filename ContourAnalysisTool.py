@@ -1155,14 +1155,11 @@ class Mask:
         # Ensure the mask is a boolean array
         mask = mask.astype(bool)
         
-        # Dilate the mask to create a region outside of the original mask
+        # Dilate the mask to create a region outside of the original mask of requested thickness
         dilated_mask = binary_dilation(mask, iterations=thickness)
         
         # Compute the edges by subtracting the original mask from the dilated mask
         custom_edges = dilated_mask & ~mask
-        
-        # Compute the border of the dilated mask
-        dilated_border = dilated_mask & ~binary_erosion(dilated_mask)
         
         # Create a mask representing the area where the dilated mask extends beyond the array boundary
         boundary_mask        = np.zeros_like(mask, dtype=bool)
@@ -1172,7 +1169,7 @@ class Mask:
         boundary_mask[:, -1] = True
         
         # Combine the edges with the boundary where the dilated mask extends beyond the array borders
-        edges = custom_edges | (dilated_border & boundary_mask)
+        edges = custom_edges | (dilated_mask & boundary_mask)
         
         return edges
 #-------------------End Mask
