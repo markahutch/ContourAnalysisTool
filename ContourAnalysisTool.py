@@ -1438,10 +1438,9 @@ class ContourLevels:
     def find_average_level(self, image, threshold_percentage=None):
         """
         Finds the average contour level in the given image based on the specified threshold percentage. 
-        It calculates the gradient magnitude, thresholds it, labels connected components, 
-        and finds contours to compute the average level.
+        It calculates the gradient magnitude, thresholds it, finds contours, and computes the average level.
         """
-        from scipy.ndimage import gaussian_gradient_magnitude, label, find_objects
+        from scipy.ndimage import gaussian_gradient_magnitude
         from skimage.measure import find_contours
 
         # Set default threshold value
@@ -1450,32 +1449,21 @@ class ContourLevels:
         
         # Calculate the gradient magnitude
         gradient_magnitude = gaussian_gradient_magnitude(image, sigma=1.0)
-    
+
         # Calculate the actual threshold value based on the percentage
         threshold_value = np.percentile(gradient_magnitude[gradient_magnitude != 0], threshold_percentage)
-    
+
         # Threshold the gradient magnitude
         significant_gradients = gradient_magnitude < threshold_value
-    
-        # Label connected components in significant_gradients
-        labeled_gradients, num_features = label(significant_gradients)
-    
-        # Find bounding boxes for each labeled region
-        bounding_boxes = find_objects(labeled_gradients)
-    
-        # Assuming the largest region corresponds to the signal, exclude it
-        if num_features > 1:
-            largest_region_index = np.argmax([np.prod(box[0].stop - box[0].start) for box in bounding_boxes])
-            significant_gradients[labeled_gradients == largest_region_index + 1] = False
-    
-        # Find contours in the raw data within significant_gradients
-        # The contour level 0.5 represents the boundary between True (1) and False (0) in binary images
+
+        # Find contours in the significant gradients
         contours = find_contours(significant_gradients, 0.5)
-    
+
         # Calculate the average contour level
         average_level = np.mean([np.mean(image[np.round(contour[:, 0]).astype(int), np.round(contour[:, 1]).astype(int)]) for contour in contours])
-    
+
         return average_level
+
 
     #-------------------
     # Find Closed Contours
@@ -2537,12 +2525,6 @@ class PrintData:
             print('--------------------------------------------------------------------------')
             print('Copy and run the following code to reproduce the contours programmatically:')
             print(f"   (assuming the instance name for this interactive session is {self.color_text_red(instance_name)})")
-            # print(' (red text must first be replaced with the appropriate input variables)')
-            # print(self.color_text_green('# Alternatively, using a non-interactive instance:'))
-            # if self.MDC.mask_shape_dropdown.value == self.M.mask_shape_options[self.M.i_draw_mask]:
-            #     print(f"# {instance_name} = {self.file_name}.{self.interface_name}({image_text}, {extent_text}, interactive=False, mask={self.color_text_red('[mask]')})")
-            # else:
-            #     print(f"# {instance_name} = {self.file_name}.{self.interface_name}({image_text}, {extent_text}, interactive=False)")
             print('--------------------------------------------------------------------------')            
 
         # If Raw contours are visible, print executable code to produce the raw image and contours
@@ -2550,7 +2532,7 @@ class PrintData:
             suffix = f"_{self.CL.dataList[self.CL.i_raw].lower().replace(' ', '')}"
             output_vars_with_suffix = ', '.join([f"{var}{suffix}" for var in output_vars.split(', ')])
             print(self.color_text_green('# Raw Image Contours'))
-            print(f"{output_vars_with_suffix} = {instance_name}.find_contours_raw(threshold={self.AC.averaging_threshold_percentage.value}, selected_levels={levels_raw}, selected_scaling={scaling}, mask={mask_text})")
+            print(f"{output_vars_with_suffix} = {instance_name}.find_contours_raw(threshold={self.AC.averaging_threshold_percentage.value}, selected_levels={levels_raw}, selected_scaling='{scaling}', mask={mask_text})")
 
         # If Smoothed contours are visible, print executable code for the smoothed image and contours
         if any(visible_flags_smoothed):
