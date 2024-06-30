@@ -408,7 +408,9 @@ class ImageData:
         # Check if the image byte order is not native to the local machine
         if image.dtype.byteorder not in ('=', '|'):
             # Change byte order to native
-            image = image.byteswap().newbyteorder()
+            # image = image.byteswap().newbyteorder()
+            image = image.byteswap().view(image.dtype.newbyteorder('='))
+
 
         return image
 
@@ -2747,6 +2749,7 @@ class InteractivePlot:
         """
         import ipywidgets as widgets
         from IPython.display import display
+        from matplotlib.backend_bases import NavigationToolbar2
 
         self.ID  = ID
         self.S   = S
@@ -2839,6 +2842,8 @@ class InteractivePlot:
                 # Update widget values based on colorbar limits
                 self.DC.clim_min_input.value = min_val
                 self.DC.clim_max_input.value = max_val
+
+                self.update_cmap()
             finally:
                 # Reconnect observers
                 self.DC.clim_min_input.observe(self.on_clim_change, names='value')
@@ -2990,6 +2995,47 @@ class InteractivePlot:
                 item.observe(self.update_printed_info, names='value')
         #-------------------
 
+        #-------------------
+        # Replace Home Button
+        #-------------------
+        # Replace the home method in the toolbar with custom home
+        self._override_home(NavigationToolbar2)
+        #-------------------
+    #-------------------End __init__
+
+    #-------------------
+    # Create Custom Home Button
+    #-------------------
+    def _override_home(self, NavigationToolbar2):
+        """
+        Override the home button with a custom button that accounts for the scaling toggle.
+        """
+        original_home = NavigationToolbar2.home
+
+        def custom_home(toolbar, *args, **kwargs):
+            """
+            Use the original home functionality to reset the axes, but use a custom method to reset
+            the colorbar that accounts for the data scaling toggle. Finally, update the colormap.
+            """
+            if self.DC.scaling_toggle.value == self.ID.scaling_options[self.ID.i_logarithmic]:
+                min_val = np.log10(self.ID.image_min)
+                max_val = np.log10(self.ID.image_max)
+            else:
+                min_val = self.ID.image_min
+                max_val = self.ID.image_max
+
+            # Update widget values based on colorbar limits
+            self.DC.clim_min_input.value = min_val
+            self.DC.clim_max_input.value = max_val
+
+            # Call the original home method
+            original_home(toolbar, *args, **kwargs)  
+
+            # Update the colormap
+            self.update_cmap()
+
+        NavigationToolbar2.home = custom_home
+    #-------------------
 
     #-------------------
     # Update Printed Info
