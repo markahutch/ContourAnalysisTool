@@ -2383,16 +2383,18 @@ class PrintData:
     A class to manage printing results and code in the interactive session.
     """
     
-    def __init__(self, ID, M, CL, MDC, SC, DC, CC, AC, interface_name, file_name, get_smoothing_parameters, get_nobackground_params, custom_mask=None):
+    def __init__(self, ID, NB, M, CL, MDC, SC, RBC, DC, CC, AC, interface_name, file_name, get_smoothing_parameters, get_nobackground_params, custom_mask=None):
         """
         Initializes the PrintData instance.
 
         Args:
             ID  (object): The instance of the Image Data (ID) class.
+            NB  (object): The instance of the No Background (NB) class.
             M   (object): The instance of the Mask (M) class.
             CL  (object): The instance of the Contour Levels (CL) class.
             MDC (object): The instance of the Mask Data Controls (MDC) class.
             SC  (object): The instance of the Smoothing Controls (SC) class.
+            RBC (object): The instance of the Remove Background Controls (RBC) class.
             DC  (object): The instance of the Data Controls (DC) class.
             CC  (object): The instance of the Checkbox Controls (CC) class.
             AC  (object): The instance of the Averaging Controls (AC) class.
@@ -2404,10 +2406,12 @@ class PrintData:
         import ipywidgets as widgets
 
         self.ID  = ID
+        self.NB  = NB
         self.M   = M
         self.CL  = CL
         self.MDC = MDC
         self.SC  = SC
+        self.RBC = RBC
         self.DC  = DC
         self.CC  = CC
         self.AC  = AC
@@ -2544,17 +2548,24 @@ class PrintData:
             suffix = f"_{self.CL.dataList[self.CL.i_smoothed].lower().replace(' ', '')}"
             output_vars_with_suffix = ', '.join([f"{var}{suffix}" for var in output_vars.split(', ')])
             print(self.color_text_green('# Smoothed Image Contours'))
-            print(f"{output_vars_with_suffix} = {instance_name}.find_contours_smoothed(selected_method='{selected_method}', threshold={self.AC.averaging_threshold_percentage.value}, selected_levels={levels_smoothed}, selected_scaling={scaling}, {smoothing_params_str}, mask={mask_text})")
+            print(f"{output_vars_with_suffix} = {instance_name}.find_contours_smoothed(selected_method='{selected_method}', threshold={self.AC.averaging_threshold_percentage.value}, selected_levels={levels_smoothed}, selected_scaling='{scaling}', {smoothing_params_str}, mask={mask_text})")
 
         # If NoBackground contours are visible, print executable code for the no-background image and contours
         if any(visible_flags_nobackground):
             nobackground_params = self.get_nobackground_params()
-            nobackground_params_str = ", ".join([f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}" for key, value in nobackground_params.items()])
+
+            # Skip the pad_value parameter if the pad_mode is not 'constant'
+            selected_mode = self.RBC.nobackground_widgets[self.NB.i_pad_mode].value
+            nobackground_params_str = ", ".join([
+                f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}"
+                for key, value in nobackground_params.items()
+                if key != self.NB.nobackground_parameters[self.NB.i_pad_value]['var_name'] or selected_mode == self.NB.padding_options[self.NB.i_constant]
+            ])
 
             suffix = f"_{self.CL.dataList[self.CL.i_nobackground].lower().replace(' ', '')}"
             output_vars_with_suffix = ', '.join([f"{var}{suffix}" for var in output_vars.split(', ')])
             print(self.color_text_green('# No Background Image Contours'))
-            print(f"{output_vars_with_suffix} = {instance_name}.find_contours_nobackground(threshold={self.AC.averaging_threshold_percentage.value}, selected_levels={levels_nobackground}, selected_scaling={scaling}, {nobackground_params_str}, mask={mask_text})")
+            print(f"{output_vars_with_suffix} = {instance_name}.find_contours_nobackground(threshold={self.AC.averaging_threshold_percentage.value}, selected_levels={levels_nobackground}, selected_scaling='{scaling}', {nobackground_params_str}, mask={mask_text})")
 
     def interactive_print(self):
         """
@@ -3743,7 +3754,7 @@ class UserInterface:
             self.CC  = CheckboxControls(self.CL)
             self.AC  = AveragingControls(self.CL)
             self.RBC = RemoveBackgroundControls(self.NB)
-            self.PD  = PrintData(self.ID, self.M, self.CL, self.MDC, self.SC, self.DC, self.CC, self.AC, 
+            self.PD  = PrintData(self.ID, self.NB, self.M, self.CL, self.MDC, self.SC, self.RBC, self.DC, self.CC, self.AC, 
                                  class_name, file_name, self.get_smoothing_parameters, self.get_nobackground_params,
                                  custom_mask=mask)
             self.PPM = PaintPixelMask(self.ID)
