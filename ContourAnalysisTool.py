@@ -3801,7 +3801,7 @@ class UserInterface:
         # Generate the contours
         selected_levels_dict = self.generate_contours(self.CL.i_raw, selected_levels, selected_scaling, threshold, display_plot)
 
-        return selected_levels_dict, self.ID.image_raw, self.ID.hF
+        return selected_levels_dict, self.ID.image_raw * self.M.mask, self.ID.hF
     #-------------------
     
 
@@ -3928,7 +3928,7 @@ class UserInterface:
         # Generate the contours
         selected_levels_dict = self.generate_contours(self.CL.i_smoothed, selected_levels, selected_scaling, threshold, display_plot)
 
-        return selected_levels_dict, self.ID.image_smoothed, self.ID.hF
+        return selected_levels_dict, self.ID.image_smoothed * self.M.mask, self.ID.hF
         
     def get_smoothing_parameters(self, method):
         """
@@ -4024,7 +4024,7 @@ class UserInterface:
         # Generate the contours
         selected_levels_dict = self.generate_contours(self.CL.i_nobackground, selected_levels, selected_scaling, threshold, display_plot)
 
-        return selected_levels_dict, self.ID.image_nobackground, self.ID.hF
+        return selected_levels_dict, self.ID.image_nobackground * self.M.mask, self.ID.hF
         
     def get_nobackground_params(self):
         """
