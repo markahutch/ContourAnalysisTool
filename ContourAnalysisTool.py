@@ -1074,10 +1074,12 @@ class Mask:
         self.i_circle_mask = 0
         self.i_square_mask = 1
         self.i_draw_mask   = 2
-        self.mask_shape_options                     = [None] * 3
+        self.i_contour     = 3
+        self.mask_shape_options                     = [None] * 4
         self.mask_shape_options[self.i_circle_mask] = 'circle'
         self.mask_shape_options[self.i_square_mask] = 'square'
         self.mask_shape_options[self.i_draw_mask]   = 'draw'
+        self.mask_shape_options[self.i_contour]     = 'contour'
 
         # Set default values for the mask
         self.initial_mask_xpos   = (self.ID.xmin + self.ID.xmax) / 2
@@ -1240,10 +1242,11 @@ class ContourLevels:
         self.CS_nobackground = None
 
         # Empty dictionaries to be filled with contour objects and properties
-        self.contour_colors  = None
-        self.contour_styles  = None
-        self.contour_lines   = None
-        self.contour_levels  = None
+        self.contour_colors     = None
+        self.contour_styles     = None
+        self.contour_lines      = None
+        self.contour_levels     = None
+        self.initial_lcc_levels = None
 
         # Containers to hold the current value of the calculated contour levels
         self.lcc_level                   = None
@@ -1334,6 +1337,13 @@ class ContourLevels:
                 self.levelList[self.i_otsulog]: self.otsu_log_level_nobackground,
                 self.levelList[self.i_average]: self.average_level_nobackground
             }
+        }
+
+        # Create a dictionary to store just the initial lcc levels
+        self.initial_lcc_levels = {
+            self.dataList[self.i_raw]:          self.lcc_level,
+            self.dataList[self.i_smoothed]:     self.lcc_level_smoothed,
+            self.dataList[self.i_nobackground]: self.lcc_level_nobackground
         }
     
     def update_contour_levels(self):
@@ -2313,16 +2323,18 @@ class MaskDataControls:
     """
     A class to manage interactive controls for masking data.
     """
-    def __init__(self, ID, M):
+    def __init__(self, ID, M, CL):
         """
         Initializes the MaskDataControls instance.
 
         Args:
             ID (object): The instance containing Image Data (ID).
             M (object): The instance containing Mask (M) data.
+            CL (object): The ContourLines (CL) object containing data list and indices.
         """
         self.ID = ID
         self.M  = M
+        self.CL = CL
         self.setup_widgets()
 
     def setup_widgets(self):
@@ -2336,6 +2348,7 @@ class MaskDataControls:
         """
         import ipywidgets as widgets
 
+        # Create menus/options for the default circle/square mask
         self.mask_data_label = widgets.Label(value='Mask Data:  ', layout={'margin': '0px 0px 0px 0px'})
         self.mask_yes_no_dropdown = widgets.Dropdown(options=['Yes', 'No'], value='No', layout={'width': '50px'})
         self.mask_shape_dropdown = widgets.Dropdown(description='Mask Shape', options=self.M.mask_shape_options, value=self.M.initial_mask_shape, layout={'width': '200px'})
@@ -2358,6 +2371,10 @@ class MaskDataControls:
             max_value=self.ID.ymax,
             step=self.M.initial_y_step_size,
             width='100px')
+
+        # Create a menus for the contour mask
+        self.mask_contour_data_dropdown  = widgets.Dropdown(description='data', options=self.CL.dataList, value=self.CL.dataList[self.CL.i_raw], layout={'width': '200px'})
+        self.mask_contour_level_dropdown = widgets.Dropdown(description='level', options=self.CL.levelList, value=self.CL.levelList[self.CL.i_lcc], layout={'width': '200px'})
 
         # Function to update the options visibility based on the yes/no dropdown value
         def update_mask_options_visibility(change):
@@ -2501,7 +2518,8 @@ class PrintData:
         # Get the text to handle the mask
         if self.custom_mask is None:
             if self.MDC.mask_yes_no_dropdown.value == 'Yes':
-                if self.MDC.mask_shape_dropdown.value == self.M.mask_shape_options[self.M.i_draw_mask]:
+                if (self.MDC.mask_shape_dropdown.value == self.M.mask_shape_options[self.M.i_draw_mask]
+                    or self.MDC.mask_shape_dropdown.value == self.M.mask_shape_options[self.M.i_contour]):
                     mask_text = f"{instance_name}.M.mask"
                 else:
                     # Extract mask variables and values from widgets
@@ -2901,11 +2919,18 @@ class InteractivePlot:
         #-------------------
 
         #-------------------
+        # Contour Mask Observers
+        #-------------------
+        self.MDC.mask_contour_data_dropdown.observe(self.update_masked_figure, names='value')
+        self.MDC.mask_contour_level_dropdown.observe(self.update_masked_figure, names='value')
+        #-------------------
+
+        #-------------------
         # Paint Pixel Mask Observers
         #-------------------
         # Add brush controls when 'draw' is selected in the mask shape dropdown menu
-        self.MDC.mask_shape_dropdown.observe(self.update_pixel_mask_layout, names='value')
-        self.MDC.mask_yes_no_dropdown.observe(self.update_pixel_mask_layout, names='value')
+        self.MDC.mask_shape_dropdown.observe(self.update_mask_controls_layout, names='value')
+        self.MDC.mask_yes_no_dropdown.observe(self.update_mask_controls_layout, names='value')
 
         # Update the brush parameter dictionary whenever any brush widgets are changed
         self.brush_widgets_to_observe = list(self.PPM.brush_widgets.values())
@@ -3141,6 +3166,12 @@ class InteractivePlot:
         # Calculate the new average levels and update the contours
         self.CL.calculate_average_levels(threshold_val)
         self.update_contours(self.M.mask, update_levelList_set=self.CL.levelList[self.CL.i_average])
+
+        # Update the mask if using
+        if (self.MDC.mask_yes_no_dropdown.value == 'Yes' and self.custom_mask is None 
+                                                         and self.MDC.mask_shape_dropdown.value == self.M.mask_shape_options[self.M.i_contour]
+                                                         and self.MDC.mask_contour_level_dropdown.value == self.CL.levelList[self.CL.i_average]):
+            self.update_masked_figure(change)
     #-------------------
     
     #-------------------
@@ -3184,7 +3215,35 @@ class InteractivePlot:
         # Create the mask
         if self.custom_mask is not None:
             self.M.mask = self.custom_mask
-        elif self.MDC.mask_yes_no_dropdown.value == 'Yes' and self.custom_mask is None and self.MDC.mask_shape_dropdown.value != self.M.mask_shape_options[self.M.i_draw_mask]:
+        elif (self.MDC.mask_yes_no_dropdown.value == 'Yes' and self.custom_mask is None 
+                                                           and self.MDC.mask_shape_dropdown.value == self.M.mask_shape_options[self.M.i_contour]):
+            from scipy.ndimage import binary_dilation
+            
+            # Choose a contour level
+            if self.MDC.mask_contour_level_dropdown.value == self.CL.levelList[self.CL.i_lcc]:
+                contour_level = self.CL.initial_lcc_levels[self.MDC.mask_contour_data_dropdown.value]
+            else:
+                contour_level = self.CL.contour_levels[self.MDC.mask_contour_data_dropdown.value][self.MDC.mask_contour_level_dropdown.value]
+
+            # Ensure the mask is a boolean array
+            if self.MDC.mask_contour_data_dropdown.value == self.CL.dataList[self.CL.i_raw]:
+                mask = (self.ID.image_raw >= contour_level).astype(bool)
+            elif self.MDC.mask_contour_data_dropdown.value == self.CL.dataList[self.CL.i_smoothed]:
+                mask = (self.ID.image_smoothed >= contour_level).astype(bool)
+            elif self.MDC.mask_contour_data_dropdown.value == self.CL.dataList[self.CL.i_nobackground]:
+                mask = (self.ID.image_nobackground >= contour_level).astype(bool)
+
+            # Define the dilation thickness
+            thickness = 1
+
+            # Dilate the mask
+            dilated_mask = binary_dilation(mask, iterations=thickness)
+
+            # Convert back to uint8 for consistency with image processing libraries
+            self.M.mask = dilated_mask.astype(np.uint8)
+        elif (self.MDC.mask_yes_no_dropdown.value == 'Yes' and self.custom_mask is None 
+                                                           and self.MDC.mask_shape_dropdown.value != self.M.mask_shape_options[self.M.i_draw_mask]
+                                                           and self.MDC.mask_shape_dropdown.value != self.M.mask_shape_options[self.M.i_contour]):
             self.M.mask = self.M.create_mask(mask_xpos  = self.MDC.mask_xpos_text.value, 
                                              mask_ypos  = self.MDC.mask_ypos_text.value, 
                                              mask_shape = self.MDC.mask_shape_dropdown.value, 
@@ -3200,6 +3259,21 @@ class InteractivePlot:
 
         # Mask the new contours
         self.update_contours(self.M.mask)
+    #-------------------
+
+
+    #-------------------
+    # Update Contour Mask
+    #-------------------
+    def is_contour_enabled(self):
+        """
+        Returns True if drawing is enabled based on the current selections.
+        """
+        selected_mode = self.MDC.mask_shape_dropdown.value
+        return (
+            selected_mode == self.M.mask_shape_options[self.M.i_contour]
+            and self.MDC.mask_yes_no_dropdown.value == 'Yes'
+        )
     #-------------------
 
 
@@ -3339,13 +3413,19 @@ class InteractivePlot:
         # Mask the new contours
         self.update_contours(self.M.mask)
 
-    def update_pixel_mask_layout(self, change):
+    def update_mask_controls_layout(self, change):
         """
-        Updates the widget layout to add drawing tools for the pixel mask
+        Updates the widget layout to add drawing tools for the pixel mask or contour selection for the contour mask
         """
         import ipywidgets as widgets
 
-        if self.is_drawing_enabled():
+        if self.is_contour_enabled():
+            self.update_masked_figure(change)
+
+            # Use a reduced set of mask widgets when drawing is enabled
+            reduced_mask_controls = widgets.HBox([self.MDC.mask_data_label, self.MDC.mask_yes_no_dropdown, self.MDC.mask_shape_dropdown, self.MDC.mask_contour_data_dropdown, self.MDC.mask_contour_level_dropdown])
+            new_controls = [self.DC.data_controls, self.CC.checkbox_controls, self.AC.averaging_controls, self.SC.smoothing_controls, self.RBC.remove_background_controls, reduced_mask_controls]
+        elif self.is_drawing_enabled():
             # Reset the mask when drawing is first enabled
             self.M.mask = np.ones_like(self.ID.image_raw)
             self.update_masked_figure(change)
@@ -3748,7 +3828,7 @@ class UserInterface:
             file_name  = self.get_current_filename()
             
             # Initialise all interactive modules
-            self.MDC = MaskDataControls(self.ID, self.M)
+            self.MDC = MaskDataControls(self.ID, self.M, self.CL)
             self.SC  = SmoothingControls(self.S)
             self.DC  = DataControls(self.ID, self.CL)
             self.CC  = CheckboxControls(self.CL)
