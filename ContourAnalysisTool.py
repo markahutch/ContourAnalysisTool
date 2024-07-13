@@ -3898,7 +3898,7 @@ class UserInterface:
     #-------------------
     # Smoothed
     #-------------------
-    def find_contours_smoothed(self, selected_method, selected_levels=None, selected_scaling=None, threshold=None, mask=None, display_plot=False, **kwargs):
+    def find_contours_smoothed(self, selected_method=None, selected_levels=None, selected_scaling=None, threshold=None, mask=None, display_plot=False, **kwargs):
         """
         Generate contours for smoothed image data.
 
@@ -4031,6 +4031,8 @@ class UserInterface:
             method: The validated smoothing method.
             smoothing_params: Dictionary of smoothing parameters.
         """
+        if method is None:
+            method = self.S.initial_smoothing_method
         if method not in self.S.smoothing_methods:
             method_index = self.expand_search(method, self.S.smoothing_methods)
             method = self.S.smoothing_methods[method_index]
