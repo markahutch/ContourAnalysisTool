@@ -286,7 +286,7 @@ class ImageData:
         self.dy = self.y[1] - self.y[0]
 
         # Containers for the min and max of the various images
-        self.image_min                = np.min(self.image_raw)
+        self.image_min                = np.min(image_raw[image_raw != 0])
         self.image_max                = np.max(self.image_raw)
         self.image_min_smoothed       = None
         self.image_max_smoothed       = None
@@ -467,13 +467,13 @@ class ImageData:
 
         # Selection of the data
         if selected_data == CL.dataList[CL.i_raw]: # Raw image
-            self.image_raw[self.image_raw == 0] = 1e-300
+            self.image_raw[self.image_raw == 0] = self.small_val
             data = self.image_raw
         elif selected_data == CL.dataList[CL.i_smoothed]: # Smoothed image
-            self.image_smoothed[self.image_smoothed == 0] = 1e-300
+            self.image_smoothed[self.image_smoothed == 0] = self.small_val
             data = self.image_smoothed
         elif selected_data == CL.dataList[CL.i_nobackground]: # No Background
-            self.image_nobackground[self.image_nobackground == 0] = 1e-300
+            self.image_nobackground[self.image_nobackground == 0] = self.small_val
             data = self.image_nobackground
 
         # Mask the data if applicable
@@ -1089,8 +1089,18 @@ class Mask:
         self.initial_x_step_size = (self.ID.xmax - self.ID.xmin) / 100
         self.initial_y_step_size = (self.ID.ymax - self.ID.ymin) / 100
 
+        # Set the default mask
+        # self.mask = np.ones_like(self.ID.image_raw)
+        self.reset_to_default_mask()
+
+    def reset_to_default_mask(self):
         # Set the default mask to 1s (i.e. no masking of data)
-        self.mask = np.ones_like(self.ID.image_raw)
+        if np.any(self.ID.image_raw == 0):
+            self.mask = (self.ID.image_raw != 0).astype(int)
+        elif np.any(self.ID.image_raw == self.ID.small_val):
+            self.mask = (self.ID.image_raw != self.ID.small_val).astype(int)
+        else:
+            self.mask = np.ones_like(self.ID.image_raw)
 
     def create_mask(self, mask_xpos=None, mask_ypos=None, mask_shape=None, mask_size=None):
         """
@@ -3249,7 +3259,7 @@ class InteractivePlot:
                                              mask_shape = self.MDC.mask_shape_dropdown.value, 
                                              mask_size  = self.MDC.mask_size_text.value)
         else:
-            self.M.mask = np.ones_like(self.ID.image_raw)
+            self.M.reset_to_default_mask()
 
         # Mask the background colormap
         self.update_cmap()
@@ -3427,7 +3437,7 @@ class InteractivePlot:
             new_controls = [self.DC.data_controls, self.CC.checkbox_controls, self.AC.averaging_controls, self.SC.smoothing_controls, self.RBC.remove_background_controls, reduced_mask_controls]
         elif self.is_drawing_enabled():
             # Reset the mask when drawing is first enabled
-            self.M.mask = np.ones_like(self.ID.image_raw)
+            self.M.reset_to_default_mask()
             self.update_masked_figure(change)
 
             # Use a reduced set of mask widgets when drawing is enabled
@@ -3769,7 +3779,7 @@ class UserInterface:
             interactive : bool, optional, default: False
                 Enables or disables interactive session.
                 
-            mask : 2D binary array-like, optional, default: None (reverts to np.ones_like(self.ID.image_raw))
+            mask : 2D binary array-like, optional, default: None (reverts to self.M.reset_to_default_mask())
                 Custom mask to apply to the image.
                 
             **kwargs : Additional optional keyword arguments (see self.ID.user_modifiable_plot_attributes).
@@ -3859,7 +3869,7 @@ class UserInterface:
             threshold : float, optional, default: None (reverts to 20)
                 The threshold value for contour calculation.
                 
-            mask : 2D array-like, optional, default: None (reverts to np.ones_like(self.ID.image_raw))
+            mask : 2D array-like, optional, default: None (reverts to self.M.reset_to_default_mask())
                 The mask to be applied.
                 
             display_plot : bool, optional, default: False
@@ -3905,7 +3915,7 @@ class UserInterface:
             threshold : float, optional, default: None (reverts to 20)
                 The threshold value for contour calculation.
                 
-            mask : 2D array-like, optional, default: None (reverts to np.ones_like(self.ID.image_raw))
+            mask : 2D array-like, optional, default: None (reverts to self.M.reset_to_default_mask())
                 The mask to be applied (default is None).
                 
             display_plot : bool, optional, default: False
@@ -4047,7 +4057,7 @@ class UserInterface:
             threshold : float, optional, default: None (reverts to 20)
                 The threshold value for contour calculation.
                 
-            mask : 2D array-like, optional, default: None (reverts to np.ones_like(self.ID.image_raw))
+            mask : 2D array-like, optional, default: None (reverts to self.M.reset_to_default_mask())
                 The mask to be applied (default is None).
                 
             display_plot : bool, optional, default: False
@@ -4167,7 +4177,7 @@ class UserInterface:
         if mask is not None:
             self.M.mask = mask
         else:
-            self.M.mask = np.ones_like(self.ID.image_raw)
+            self.M.reset_to_default_mask()
     #-------------------
 
 
