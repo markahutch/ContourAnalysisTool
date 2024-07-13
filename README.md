@@ -1,6 +1,6 @@
 <div align="center">
 <a href="https://github.com/markahutch/ContourAnalysisTool">
-<img src="images/Logo.png" alt="Logo" width="200" height="200">
+<img src="images/Logo_artistic.png" alt="Logo" width="600">
 </a>
 <h3 align="center">ContourAnalysisTool</h3>
 <p align="center">
